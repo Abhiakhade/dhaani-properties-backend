@@ -27,7 +27,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://your-frontend.vercel.app", // 🔥 replace with your real URL
+      "https://your-frontend.vercel.app", // 🔥 replace with your real frontend URL
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
@@ -37,7 +37,7 @@ app.use(
 // --------------------- MIDDLEWARE ---------------------
 app.use(express.json());
 
-// ⚠️ TEMP: local uploads (not production safe on Render)
+// ⚠️ TEMP: local uploads (not safe on Render long-term)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // --------------------- API ROUTES ---------------------
@@ -48,7 +48,7 @@ app.use("/api/properties", propertyRoutes);
 app.use("/api/sell", sellRoutes);
 app.use("/api/sell-property", sellPropertyRoutes);
 
-// Admin
+// Admin routes
 app.use("/api/admin", adminAuthRoutes);
 app.use("/api/admin", adminRoutes);
 
@@ -60,20 +60,6 @@ app.get("/", (req, res) => {
 app.get("/health", (req, res) => {
   res.status(200).json({ message: "🚀 Server running" });
 });
-
-// --------------------- DATABASE ---------------------
-if (!process.env.MONGO_URL) {
-  console.error("❌ MONGO_URL missing in .env");
-  process.exit(1);
-}
-
-mongoose
-  .connect(process.env.MONGO_URL)
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => {
-    console.error("❌ MongoDB Error:", err.message);
-    process.exit(1);
-  });
 
 // --------------------- 404 HANDLER ---------------------
 app.use((req, res) => {
@@ -94,9 +80,31 @@ app.use((err, req, res, next) => {
   });
 });
 
-// --------------------- START SERVER ---------------------
+// --------------------- START SERVER (WITH DB CONNECTION) ---------------------
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+const startServer = async () => {
+  try {
+    console.log("🔍 Starting server...");
+    console.log("🔍 MONGO_URL:", process.env.MONGO_URL);
+
+    if (!process.env.MONGO_URL) {
+      console.error("❌ MONGO_URL missing");
+      process.exit(1);
+    }
+
+    console.log("⏳ Connecting to MongoDB...");
+    await mongoose.connect(process.env.MONGO_URL);
+
+    console.log("✅ MongoDB Connected");
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
+  } catch (err) {
+    console.error("❌ MongoDB Error:", err.message);
+    process.exit(1);
+  }
+};
+
+startServer();
